@@ -26,25 +26,40 @@ function App() {
   const fetchStockData = async (symbol) => {
     try {
       // Using Finnhub API with user's API key
-      const [quoteResponse, prevCloseResponse] = await Promise.all([
-        fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${apiKey}`),
-        fetch(`https://finnhub.io/api/v1/stock/candle?symbol=${symbol}&resolution=D&from=${Math.floor(Date.now()/1000) - 86400*2}&to=${Math.floor(Date.now()/1000)}&token=${apiKey}`)
-      ])
+      const quoteResponse = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${apiKey}`)
 
-      if (!quoteResponse.ok || !prevCloseResponse.ok) {
-        throw new Error('API request failed')
+      if (!quoteResponse.ok) {
+        throw new Error(`API request failed with status: ${quoteResponse.status}`)
       }
 
       const quoteData = await quoteResponse.json()
-      const candleData = await prevCloseResponse.json()
+
+      // Check for API errors
+      if (quoteData.error) {
+        throw new Error(`API Error: ${quoteData.error}`)
+      }
+
+      // Check if we have valid data
+      if (!quoteData.c || quoteData.c === 0) {
+        console.warn(`No valid price data for ${symbol}:`, quoteData)
+        return null
+      }
 
       // Get current price and previous close
       const currentPrice = quoteData.c // current price
       const previousClose = quoteData.pc // previous close
 
+      // Validate data
+      if (!currentPrice || !previousClose) {
+        console.warn(`Invalid price data for ${symbol}:`, { currentPrice, previousClose })
+        return null
+      }
+
       // Calculate change and percentage
       const change = currentPrice - previousClose
       const changePercent = (change / previousClose) * 100
+
+      console.log(`${symbol} data:`, { currentPrice, previousClose, change, changePercent })
 
       return {
         symbol: symbol,
@@ -77,8 +92,8 @@ function App() {
       setStocks(validStocks)
       setLastUpdated(new Date())
     } catch (err) {
-      setError('Failed to fetch stock data. Using fallback data.')
-      // Fallback to mock data if API fails
+      setError(apiKey === 'demo' ? 'Demo API has limited access. Please add your own API key for full data.' : 'Failed to fetch stock data. Using fallback data.')
+      // Updated fallback data with more recent prices (as of Sep 2024)
       const fallbackStocks = [
         { symbol: 'AAPL', name: 'Apple Inc.', price: 220.85, change: 2.45, changePercent: 1.12 },
         { symbol: 'MSFT', name: 'Microsoft Corporation', price: 415.25, change: -1.20, changePercent: -0.29 },
@@ -86,7 +101,7 @@ function App() {
         { symbol: 'AMZN', name: 'Amazon.com Inc.', price: 185.92, change: -0.85, changePercent: -0.46 },
         { symbol: 'TSLA', name: 'Tesla Inc.', price: 428.75, change: 12.18, changePercent: 2.92 },
         { symbol: 'META', name: 'Meta Platforms Inc.', price: 520.45, change: -4.22, changePercent: -0.80 },
-        { symbol: 'NVDA', name: 'NVIDIA Corporation', price: 125.60, change: 15.80, changePercent: 14.40 },
+        { symbol: 'NVDA', name: 'NVIDIA Corporation', price: 890.50, change: 15.80, changePercent: 1.81 },
         { symbol: 'NFLX', name: 'Netflix Inc.', price: 685.30, change: 8.45, changePercent: 1.25 }
       ]
       setStocks(fallbackStocks)
@@ -248,9 +263,10 @@ function App() {
               </div>
 
               <div className="mb-6 text-sm text-blue-200">
-                <p className="mb-2">📈 <strong>Demo mode:</strong> Limited requests, basic data</p>
-                <p className="mb-2">🚀 <strong>Free API key:</strong> 60 calls/minute</p>
-                <p>💎 <strong>Premium:</strong> Higher limits + real-time data</p>
+                <p className="mb-2">📈 <strong>Demo mode:</strong> Very limited access (fallback data)</p>
+                <p className="mb-2">🚀 <strong>Free API key:</strong> 60 calls/minute, real stock data</p>
+                <p className="mb-2">💎 <strong>Premium:</strong> Higher limits + real-time data</p>
+                <p className="text-yellow-300">⚠️ NVDA prices may appear incorrect in demo mode. Use your own API key for accurate data.</p>
               </div>
 
               <div className="flex gap-3">
