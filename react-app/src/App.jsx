@@ -36,12 +36,17 @@ function App() {
     setLoading(true)
     // Simulate price changes
     setTimeout(() => {
-      const updatedStocks = mockStocks.map(stock => ({
-        ...stock,
-        price: stock.price + (Math.random() - 0.5) * 10,
-        change: (Math.random() - 0.5) * 5,
-        changePercent: (Math.random() - 0.5) * 3
-      }))
+      const updatedStocks = mockStocks.map(stock => {
+        const priceChange = (Math.random() - 0.5) * 10
+        const newPrice = stock.price + priceChange
+        const changePercent = (priceChange / stock.price) * 100
+        return {
+          ...stock,
+          price: newPrice,
+          change: priceChange,
+          changePercent: changePercent
+        }
+      })
       setStocks(updatedStocks)
       setLoading(false)
       setLastUpdated(new Date())
