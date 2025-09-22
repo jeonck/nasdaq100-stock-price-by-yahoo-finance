@@ -5,26 +5,101 @@ function App() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [lastUpdated, setLastUpdated] = useState(null)
+  const [error, setError] = useState(null)
 
-  // Mock NASDAQ 100 data for demo (updated with current market prices)
-  const mockStocks = [
-    { symbol: 'AAPL', name: 'Apple Inc.', price: 220.85, change: 2.45, changePercent: 1.12 },
-    { symbol: 'MSFT', name: 'Microsoft Corporation', price: 415.25, change: -1.20, changePercent: -0.29 },
-    { symbol: 'GOOGL', name: 'Alphabet Inc.', price: 165.80, change: 3.15, changePercent: 1.94 },
-    { symbol: 'AMZN', name: 'Amazon.com Inc.', price: 185.92, change: -0.85, changePercent: -0.46 },
-    { symbol: 'TSLA', name: 'Tesla Inc.', price: 428.75, change: 12.18, changePercent: 2.92 },
-    { symbol: 'META', name: 'Meta Platforms Inc.', price: 520.45, change: -4.22, changePercent: -0.80 },
-    { symbol: 'NVDA', name: 'NVIDIA Corporation', price: 125.60, change: 15.80, changePercent: 14.40 },
-    { symbol: 'NFLX', name: 'Netflix Inc.', price: 685.30, change: 8.45, changePercent: 1.25 }
+  // NASDAQ 100 stock symbols with company names
+  const stockSymbols = [
+    { symbol: 'AAPL', name: 'Apple Inc.' },
+    { symbol: 'MSFT', name: 'Microsoft Corporation' },
+    { symbol: 'GOOGL', name: 'Alphabet Inc.' },
+    { symbol: 'AMZN', name: 'Amazon.com Inc.' },
+    { symbol: 'TSLA', name: 'Tesla Inc.' },
+    { symbol: 'META', name: 'Meta Platforms Inc.' },
+    { symbol: 'NVDA', name: 'NVIDIA Corporation' },
+    { symbol: 'NFLX', name: 'Netflix Inc.' }
   ]
 
-  useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setStocks(mockStocks)
-      setLoading(false)
+  // Fetch stock data from Yahoo Finance
+  const fetchStockData = async (symbol) => {
+    try {
+      const response = await fetch(
+        `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=2d`,
+        {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          }
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+      const result = data.chart.result[0]
+      const meta = result.meta
+      const quotes = result.indicators.quote[0]
+
+      // Get current price and previous close
+      const currentPrice = meta.regularMarketPrice || quotes.close[quotes.close.length - 1]
+      const previousClose = meta.previousClose
+
+      // Calculate change and percentage
+      const change = currentPrice - previousClose
+      const changePercent = (change / previousClose) * 100
+
+      return {
+        symbol: symbol,
+        name: stockSymbols.find(s => s.symbol === symbol)?.name || symbol,
+        price: currentPrice,
+        change: change,
+        changePercent: changePercent,
+        previousClose: previousClose
+      }
+    } catch (error) {
+      console.error(`Error fetching ${symbol}:`, error)
+      return null
+    }
+  }
+
+  // Fetch all stock data
+  const fetchAllStocks = async () => {
+    setLoading(true)
+    setError(null)
+
+    try {
+      const promises = stockSymbols.map(stock => fetchStockData(stock.symbol))
+      const results = await Promise.all(promises)
+      const validStocks = results.filter(stock => stock !== null)
+
+      if (validStocks.length === 0) {
+        throw new Error('Failed to fetch any stock data')
+      }
+
+      setStocks(validStocks)
       setLastUpdated(new Date())
-    }, 1000)
+    } catch (err) {
+      setError('Failed to fetch stock data. Using fallback data.')
+      // Fallback to mock data if API fails
+      const fallbackStocks = [
+        { symbol: 'AAPL', name: 'Apple Inc.', price: 220.85, change: 2.45, changePercent: 1.12 },
+        { symbol: 'MSFT', name: 'Microsoft Corporation', price: 415.25, change: -1.20, changePercent: -0.29 },
+        { symbol: 'GOOGL', name: 'Alphabet Inc.', price: 165.80, change: 3.15, changePercent: 1.94 },
+        { symbol: 'AMZN', name: 'Amazon.com Inc.', price: 185.92, change: -0.85, changePercent: -0.46 },
+        { symbol: 'TSLA', name: 'Tesla Inc.', price: 428.75, change: 12.18, changePercent: 2.92 },
+        { symbol: 'META', name: 'Meta Platforms Inc.', price: 520.45, change: -4.22, changePercent: -0.80 },
+        { symbol: 'NVDA', name: 'NVIDIA Corporation', price: 125.60, change: 15.80, changePercent: 14.40 },
+        { symbol: 'NFLX', name: 'Netflix Inc.', price: 685.30, change: 8.45, changePercent: 1.25 }
+      ]
+      setStocks(fallbackStocks)
+      setLastUpdated(new Date())
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchAllStocks()
   }, [])
 
   const filteredStocks = stocks.filter(stock =>
@@ -33,24 +108,7 @@ function App() {
   )
 
   const refreshData = () => {
-    setLoading(true)
-    // Simulate price changes
-    setTimeout(() => {
-      const updatedStocks = mockStocks.map(stock => {
-        const priceChange = (Math.random() - 0.5) * 10
-        const newPrice = stock.price + priceChange
-        const changePercent = (priceChange / stock.price) * 100
-        return {
-          ...stock,
-          price: newPrice,
-          change: priceChange,
-          changePercent: changePercent
-        }
-      })
-      setStocks(updatedStocks)
-      setLoading(false)
-      setLastUpdated(new Date())
-    }, 800)
+    fetchAllStocks()
   }
 
   return (
@@ -64,6 +122,11 @@ function App() {
           <p className="text-blue-200 text-lg">
             Real-time stock prices and market data
           </p>
+          {error && (
+            <p className="text-yellow-300 text-sm mt-2 bg-yellow-900/20 rounded-lg px-4 py-2 inline-block">
+              ⚠️ {error}
+            </p>
+          )}
           {lastUpdated && (
             <p className="text-blue-300 text-sm mt-2">
               Last updated: {lastUpdated.toLocaleTimeString()}
