@@ -19,30 +19,25 @@ function App() {
     { symbol: 'NFLX', name: 'Netflix Inc.' }
   ]
 
-  // Fetch stock data from Yahoo Finance
+  // Fetch stock data from Finnhub API (CORS-friendly)
   const fetchStockData = async (symbol) => {
     try {
-      const response = await fetch(
-        `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=2d`,
-        {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-          }
-        }
-      )
+      // Using Finnhub free API (no API key required for basic quotes)
+      const [quoteResponse, prevCloseResponse] = await Promise.all([
+        fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=demo`),
+        fetch(`https://finnhub.io/api/v1/stock/candle?symbol=${symbol}&resolution=D&from=${Math.floor(Date.now()/1000) - 86400*2}&to=${Math.floor(Date.now()/1000)}&token=demo`)
+      ])
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+      if (!quoteResponse.ok || !prevCloseResponse.ok) {
+        throw new Error('API request failed')
       }
 
-      const data = await response.json()
-      const result = data.chart.result[0]
-      const meta = result.meta
-      const quotes = result.indicators.quote[0]
+      const quoteData = await quoteResponse.json()
+      const candleData = await prevCloseResponse.json()
 
       // Get current price and previous close
-      const currentPrice = meta.regularMarketPrice || quotes.close[quotes.close.length - 1]
-      const previousClose = meta.chartPreviousClose
+      const currentPrice = quoteData.c // current price
+      const previousClose = quoteData.pc // previous close
 
       // Calculate change and percentage
       const change = currentPrice - previousClose
@@ -188,7 +183,7 @@ function App() {
 
         {/* Footer */}
         <div className="text-center mt-12 text-blue-200">
-          <p>Powered by Yahoo Finance API • Built with Vite + React + Tailwind CSS</p>
+          <p>Powered by Finnhub API • Built with Vite + React + Tailwind CSS</p>
         </div>
       </div>
     </div>
