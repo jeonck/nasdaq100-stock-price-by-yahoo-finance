@@ -42,7 +42,7 @@ function App() {
 
       // Get current price and previous close
       const currentPrice = meta.regularMarketPrice || quotes.close[quotes.close.length - 1]
-      const previousClose = meta.previousClose
+      const previousClose = meta.chartPreviousClose
 
       // Calculate change and percentage
       const change = currentPrice - previousClose
