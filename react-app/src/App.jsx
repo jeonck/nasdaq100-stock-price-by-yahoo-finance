@@ -25,33 +25,61 @@ function App() {
   // Fetch stock data from Finnhub API (CORS-friendly)
   const fetchStockData = async (symbol) => {
     try {
-      // Using Finnhub API with user's API key
-      const quoteResponse = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${apiKey}`)
+      // Get current time and calculate date range for historical data
+      const now = Math.floor(Date.now() / 1000)
+      const twoDaysAgo = now - (2 * 24 * 60 * 60) // 2 days ago
+
+      // Fetch both real-time quote and historical daily data
+      const [quoteResponse, candleResponse] = await Promise.all([
+        fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${apiKey}`),
+        fetch(`https://finnhub.io/api/v1/stock/candle?symbol=${symbol}&resolution=D&from=${twoDaysAgo}&to=${now}&token=${apiKey}`)
+      ])
 
       if (!quoteResponse.ok) {
-        throw new Error(`API request failed with status: ${quoteResponse.status}`)
+        throw new Error(`Quote API request failed with status: ${quoteResponse.status}`)
       }
 
       const quoteData = await quoteResponse.json()
+      let candleData = null
+
+      // Try to get historical data for better previous close
+      if (candleResponse.ok) {
+        candleData = await candleResponse.json()
+      }
 
       // Check for API errors
       if (quoteData.error) {
         throw new Error(`API Error: ${quoteData.error}`)
       }
 
-      // Check if we have valid data
-      if (!quoteData.c || quoteData.c === 0) {
-        console.warn(`No valid price data for ${symbol}:`, quoteData)
-        return null
-      }
+      // Get current/latest price
+      let currentPrice = quoteData.c // current price from quote
+      let previousClose = quoteData.pc // previous close from quote
 
-      // Get current price and previous close
-      const currentPrice = quoteData.c // current price
-      const previousClose = quoteData.pc // previous close
+      // If we have historical candle data, use it for more accurate previous close
+      if (candleData && candleData.c && candleData.c.length > 0) {
+        const closes = candleData.c
+        const latestClose = closes[closes.length - 1]
+        const previousDayClose = closes.length > 1 ? closes[closes.length - 2] : null
+
+        console.log(`${symbol} candle data:`, {
+          closes: closes,
+          latestClose: latestClose,
+          previousDayClose: previousDayClose
+        })
+
+        // Use latest close as current price (more accurate for daily data)
+        currentPrice = latestClose
+
+        // Use previous day's close if available
+        if (previousDayClose) {
+          previousClose = previousDayClose
+        }
+      }
 
       // Validate data
       if (!currentPrice || !previousClose) {
-        console.warn(`Invalid price data for ${symbol}:`, { currentPrice, previousClose })
+        console.warn(`Invalid price data for ${symbol}:`, { currentPrice, previousClose, quoteData, candleData })
         return null
       }
 
@@ -59,7 +87,12 @@ function App() {
       const change = currentPrice - previousClose
       const changePercent = (change / previousClose) * 100
 
-      console.log(`${symbol} data:`, { currentPrice, previousClose, change, changePercent })
+      console.log(`${symbol} final data:`, {
+        currentPrice,
+        previousClose,
+        change: change.toFixed(2),
+        changePercent: changePercent.toFixed(2)
+      })
 
       return {
         symbol: symbol,
@@ -161,7 +194,7 @@ function App() {
             📈 NASDAQ 100 Stock Tracker
           </h1>
           <p className="text-blue-200 text-lg">
-            Real-time stock prices and market data
+            Daily closing prices and market data
           </p>
           {error && (
             <p className="text-yellow-300 text-sm mt-2 bg-yellow-900/20 rounded-lg px-4 py-2 inline-block">
@@ -264,8 +297,8 @@ function App() {
 
               <div className="mb-6 text-sm text-blue-200">
                 <p className="mb-2">📈 <strong>Demo mode:</strong> Very limited access (fallback data)</p>
-                <p className="mb-2">🚀 <strong>Free API key:</strong> 60 calls/minute, real stock data</p>
-                <p className="mb-2">💎 <strong>Premium:</strong> Higher limits + real-time data</p>
+                <p className="mb-2">🚀 <strong>Free API key:</strong> 60 calls/minute, daily closing prices</p>
+                <p className="mb-2">💎 <strong>Premium:</strong> Higher limits + intraday data</p>
                 <p className="text-yellow-300">⚠️ NVDA prices may appear incorrect in demo mode. Use your own API key for accurate data.</p>
               </div>
 
