@@ -6,16 +6,16 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('')
   const [lastUpdated, setLastUpdated] = useState(null)
 
-  // Mock NASDAQ 100 data for demo
+  // Mock NASDAQ 100 data for demo (updated with current market prices)
   const mockStocks = [
-    { symbol: 'AAPL', name: 'Apple Inc.', price: 178.50, change: 2.45, changePercent: 1.39 },
-    { symbol: 'MSFT', name: 'Microsoft Corporation', price: 378.85, change: -1.20, changePercent: -0.32 },
-    { symbol: 'GOOGL', name: 'Alphabet Inc.', price: 140.25, change: 3.15, changePercent: 2.30 },
-    { symbol: 'AMZN', name: 'Amazon.com Inc.', price: 153.75, change: -0.85, changePercent: -0.55 },
-    { symbol: 'TSLA', name: 'Tesla Inc.', price: 248.42, change: 12.18, changePercent: 5.15 },
-    { symbol: 'META', name: 'Meta Platforms Inc.', price: 325.60, change: -4.22, changePercent: -1.28 },
-    { symbol: 'NVDA', name: 'NVIDIA Corporation', price: 875.30, change: 15.80, changePercent: 1.84 },
-    { symbol: 'NFLX', name: 'Netflix Inc.', price: 425.18, change: 8.45, changePercent: 2.03 }
+    { symbol: 'AAPL', name: 'Apple Inc.', price: 220.85, change: 2.45, changePercent: 1.12 },
+    { symbol: 'MSFT', name: 'Microsoft Corporation', price: 415.25, change: -1.20, changePercent: -0.29 },
+    { symbol: 'GOOGL', name: 'Alphabet Inc.', price: 165.80, change: 3.15, changePercent: 1.94 },
+    { symbol: 'AMZN', name: 'Amazon.com Inc.', price: 185.92, change: -0.85, changePercent: -0.46 },
+    { symbol: 'TSLA', name: 'Tesla Inc.', price: 428.75, change: 12.18, changePercent: 2.92 },
+    { symbol: 'META', name: 'Meta Platforms Inc.', price: 520.45, change: -4.22, changePercent: -0.80 },
+    { symbol: 'NVDA', name: 'NVIDIA Corporation', price: 125.60, change: 15.80, changePercent: 14.40 },
+    { symbol: 'NFLX', name: 'Netflix Inc.', price: 685.30, change: 8.45, changePercent: 1.25 }
   ]
 
   useEffect(() => {
