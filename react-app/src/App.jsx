@@ -6,6 +6,9 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('')
   const [lastUpdated, setLastUpdated] = useState(null)
   const [error, setError] = useState(null)
+  const [apiKey, setApiKey] = useState(localStorage.getItem('finnhub_api_key') || 'demo')
+  const [showApiKeyModal, setShowApiKeyModal] = useState(false)
+  const [tempApiKey, setTempApiKey] = useState('')
 
   // NASDAQ 100 stock symbols with company names
   const stockSymbols = [
@@ -22,10 +25,10 @@ function App() {
   // Fetch stock data from Finnhub API (CORS-friendly)
   const fetchStockData = async (symbol) => {
     try {
-      // Using Finnhub free API (no API key required for basic quotes)
+      // Using Finnhub API with user's API key
       const [quoteResponse, prevCloseResponse] = await Promise.all([
-        fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=demo`),
-        fetch(`https://finnhub.io/api/v1/stock/candle?symbol=${symbol}&resolution=D&from=${Math.floor(Date.now()/1000) - 86400*2}&to=${Math.floor(Date.now()/1000)}&token=demo`)
+        fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${apiKey}`),
+        fetch(`https://finnhub.io/api/v1/stock/candle?symbol=${symbol}&resolution=D&from=${Math.floor(Date.now()/1000) - 86400*2}&to=${Math.floor(Date.now()/1000)}&token=${apiKey}`)
       ])
 
       if (!quoteResponse.ok || !prevCloseResponse.ok) {
@@ -106,6 +109,34 @@ function App() {
     fetchAllStocks()
   }
 
+  // API Key management functions
+  const saveApiKey = () => {
+    if (tempApiKey.trim()) {
+      localStorage.setItem('finnhub_api_key', tempApiKey.trim())
+      setApiKey(tempApiKey.trim())
+      setShowApiKeyModal(false)
+      setTempApiKey('')
+      setError(null)
+      // Refresh data with new API key
+      fetchAllStocks()
+    }
+  }
+
+  const resetToDemo = () => {
+    localStorage.removeItem('finnhub_api_key')
+    setApiKey('demo')
+    setShowApiKeyModal(false)
+    setTempApiKey('')
+    setError(null)
+    // Refresh data with demo key
+    fetchAllStocks()
+  }
+
+  const openApiKeyModal = () => {
+    setTempApiKey(apiKey === 'demo' ? '' : apiKey)
+    setShowApiKeyModal(true)
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-indigo-900 p-4">
       <div className="max-w-7xl mx-auto">
@@ -129,7 +160,7 @@ function App() {
           )}
         </div>
 
-        {/* Search and Refresh */}
+        {/* Search and Controls */}
         <div className="mb-8 flex flex-col sm:flex-row gap-4 justify-center items-center">
           <input
             type="text"
@@ -138,18 +169,26 @@ function App() {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="px-4 py-2 rounded-lg bg-white/10 backdrop-blur-lg border border-white/20 text-white placeholder-blue-200 w-full sm:w-80"
           />
-          <button
-            onClick={refreshData}
-            disabled={loading}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white rounded-lg transition-colors flex items-center gap-2"
-          >
-            {loading ? (
-              <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-            ) : (
-              '🔄'
-            )}
-            Refresh
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={refreshData}
+              disabled={loading}
+              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white rounded-lg transition-colors flex items-center gap-2"
+            >
+              {loading ? (
+                <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+              ) : (
+                '🔄'
+              )}
+              Refresh
+            </button>
+            <button
+              onClick={openApiKeyModal}
+              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors flex items-center gap-2"
+            >
+              🔑 API Key {apiKey === 'demo' ? '(Demo)' : '(Custom)'}
+            </button>
+          </div>
         </div>
 
         {/* Stock Grid */}
@@ -184,7 +223,59 @@ function App() {
         {/* Footer */}
         <div className="text-center mt-12 text-blue-200">
           <p>Powered by Finnhub API • Built with Vite + React + Tailwind CSS</p>
+          <p className="text-sm mt-2">
+            Get your free API key at <a href="https://finnhub.io" target="_blank" rel="noopener noreferrer" className="text-blue-300 hover:text-blue-200 underline">finnhub.io</a>
+          </p>
         </div>
+
+        {/* API Key Modal */}
+        {showApiKeyModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div className="bg-gray-800 rounded-xl p-6 w-full max-w-md border border-white/20">
+              <h3 className="text-xl font-bold text-white mb-4">🔑 Finnhub API Key Settings</h3>
+
+              <div className="mb-4">
+                <label className="block text-blue-200 text-sm mb-2">
+                  API Key (leave empty for demo mode)
+                </label>
+                <input
+                  type="text"
+                  value={tempApiKey}
+                  onChange={(e) => setTempApiKey(e.target.value)}
+                  placeholder="Enter your Finnhub API key..."
+                  className="w-full px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-blue-300 focus:outline-none focus:border-blue-400"
+                />
+              </div>
+
+              <div className="mb-6 text-sm text-blue-200">
+                <p className="mb-2">📈 <strong>Demo mode:</strong> Limited requests, basic data</p>
+                <p className="mb-2">🚀 <strong>Free API key:</strong> 60 calls/minute</p>
+                <p>💎 <strong>Premium:</strong> Higher limits + real-time data</p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={saveApiKey}
+                  className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={resetToDemo}
+                  className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg transition-colors"
+                >
+                  Demo
+                </button>
+                <button
+                  onClick={() => setShowApiKeyModal(false)}
+                  className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
