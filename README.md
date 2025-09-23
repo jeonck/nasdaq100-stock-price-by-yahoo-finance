@@ -1,6 +1,6 @@
 # 📈 NASDAQ 100 Stock Price Tracker
 
-A modern, real-time stock price tracking application for NASDAQ 100 companies, built with **Vite + React + Tailwind CSS** and powered by the **Finnhub API**.
+A modern, real-time stock price tracking application for NASDAQ 100 companies, built with **Vite + React + Tailwind CSS** and powered by **Yahoo Finance API** with optional **Finnhub** backup.
 
 ## 🚀 Live Demo
 
@@ -21,16 +21,16 @@ A modern, real-time stock price tracking application for NASDAQ 100 companies, b
 - **Dark Theme**: Modern financial dashboard aesthetics
 
 ### 🔑 API Integration
-- **Finnhub API**: Professional financial data provider
-- **Custom API Keys**: Support for personal API keys (60 calls/minute free)
-- **Demo Mode**: Fallback data when API is unavailable
-- **Error Handling**: Graceful degradation with user feedback
+- **Yahoo Finance API**: Primary data source (no API key required)
+- **Finnhub API**: Optional backup for enhanced reliability
+- **Dual API Strategy**: Automatic fallback for maximum uptime
+- **Zero Setup**: Works immediately without any configuration
 
 ## 🛠️ Technology Stack
 
 - **Frontend**: React 18 + Vite
 - **Styling**: Tailwind CSS
-- **API**: Finnhub Financial Data
+- **APIs**: Yahoo Finance (primary) + Finnhub (optional)
 - **Deployment**: GitHub Pages
 - **CI/CD**: GitHub Actions
 
@@ -66,24 +66,33 @@ A modern, real-time stock price tracking application for NASDAQ 100 companies, b
    npm run preview
    ```
 
-## 🔑 API Key Setup (Recommended)
+## 🔑 Data Sources
 
-To get accurate, real-time stock data:
+The app works immediately with **Yahoo Finance** - no setup required!
 
-### 1. Get Free Finnhub API Key
-- Visit [finnhub.io](https://finnhub.io)
-- Create a free account
-- Copy your API key from the dashboard
+### 🎯 Primary: Yahoo Finance (Default)
+- **✅ No API key needed**: Works out of the box
+- **🚀 Real-time data**: Live stock prices and changes
+- **🆓 Completely free**: No registration required
+- **📊 Reliable**: Yahoo's proven financial data
 
-### 2. Configure in App
-- Click the **🔑 API Key** button in the app
-- Paste your API key and click **Save**
-- Enjoy 60 calls/minute with accurate data!
+### 🔧 Optional: Finnhub Backup
+For enhanced reliability, you can optionally add Finnhub:
 
-### 3. API Tiers
-- **📈 Demo Mode**: Limited access, fallback data
-- **🚀 Free API Key**: 60 calls/minute, daily closing prices
-- **💎 Premium**: Higher limits + intraday data
+1. **Get Free Finnhub API Key**
+   - Visit [finnhub.io](https://finnhub.io)
+   - Create a free account
+   - Copy your API key
+
+2. **Configure in App**
+   - Click the **🔑** button in the app
+   - Enter your Finnhub API key
+   - The app will use both APIs for maximum reliability
+
+3. **API Benefits**
+   - **🎯 Yahoo Only**: Perfect for most users
+   - **🚀 Yahoo + Finnhub**: Extra reliability (60 calls/min free)
+   - **💎 Premium Finnhub**: Higher limits for heavy usage
 
 ## 📁 Project Structure
 
@@ -145,7 +154,20 @@ npm run build
 
 ## 📊 API Documentation
 
-### Finnhub Endpoints Used
+### Yahoo Finance API (Primary)
+
+#### Chart Data
+```bash
+curl -X GET "https://query1.finance.yahoo.com/v8/finance/chart/{SYMBOL}" \
+  -H "User-Agent: Mozilla/5.0 (compatible; curl)"
+```
+
+**Response includes:**
+- `regularMarketPrice`: Current market price
+- `chartPreviousClose`: Previous day's closing price
+- Real-time price changes and volume data
+
+### Finnhub API (Optional Backup)
 
 #### Quote Data
 ```
@@ -157,11 +179,11 @@ GET https://finnhub.io/api/v1/quote?symbol={SYMBOL}&token={API_KEY}
 GET https://finnhub.io/api/v1/stock/candle?symbol={SYMBOL}&resolution=D&from={FROM}&to={TO}&token={API_KEY}
 ```
 
-### Data Processing
-- **Current Price**: Latest closing price from candle data
-- **Previous Close**: Previous day's closing price
-- **Change**: Current - Previous
-- **Change %**: (Change / Previous) × 100
+### Data Processing Strategy
+1. **Try Yahoo Finance first** (always free, no limits)
+2. **Fallback to Finnhub** if Yahoo fails and API key is available
+3. **Use static fallback** if both APIs fail
+4. **Calculate changes**: (Current - Previous) / Previous × 100
 
 ## 🎨 Features in Detail
 
@@ -178,11 +200,12 @@ Each stock displays:
 - Search by company name (e.g., "Tesla")
 - Real-time filtering as you type
 
-### API Key Management
-- **Secure Storage**: Uses localStorage for persistence
-- **Visual Indicators**: Shows current API key status
-- **Easy Switching**: Demo ↔ Custom key modes
-- **Auto Refresh**: Updates data when key changes
+### Data Source Management
+- **Automatic Detection**: Yahoo Finance works immediately
+- **Optional Enhancement**: Add Finnhub for extra reliability
+- **Visual Indicators**: Shows current data source (Yahoo Only vs Yahoo + Finnhub)
+- **Secure Storage**: Finnhub API key stored in localStorage
+- **Auto Refresh**: Updates data when settings change
 
 ## 🤝 Contributing
 
@@ -198,7 +221,8 @@ This project is open source and available under the [MIT License](LICENSE).
 
 ## 🙏 Acknowledgments
 
-- **Finnhub**: Financial data API provider
+- **Yahoo Finance**: Primary financial data provider
+- **Finnhub**: Optional backup financial data API
 - **Vite**: Lightning-fast build tool
 - **React**: UI library
 - **Tailwind CSS**: Utility-first CSS framework
@@ -208,10 +232,11 @@ This project is open source and available under the [MIT License](LICENSE).
 
 - **Live Demo**: [nasdaq100-stock-price-tracker](https://jeonck.github.io/nasdaq100-stock-price-by-yahoo-finance/)
 - **Issues**: [GitHub Issues](https://github.com/jeonck/nasdaq100-stock-price-by-yahoo-finance/issues)
-- **API Documentation**: [Finnhub Docs](https://finnhub.io/docs/api)
+- **Yahoo Finance API**: Public endpoint documentation
+- **Finnhub API**: [Finnhub Docs](https://finnhub.io/docs/api)
 
 ---
 
-**Built with ❤️ using Vite + React + Tailwind CSS**
+**Built with ❤️ using Yahoo Finance + Vite + React + Tailwind CSS**
 
-🚀 **[Try it live now!](https://jeonck.github.io/nasdaq100-stock-price-by-yahoo-finance/)**
+🚀 **[Try it live now - No setup required!](https://jeonck.github.io/nasdaq100-stock-price-by-yahoo-finance/)**
