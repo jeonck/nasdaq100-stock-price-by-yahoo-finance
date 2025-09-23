@@ -6,9 +6,10 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('')
   const [lastUpdated, setLastUpdated] = useState(null)
   const [error, setError] = useState(null)
-  const [apiKey, setApiKey] = useState(localStorage.getItem('finnhub_api_key') || 'demo')
+  const [apiKey, setApiKey] = useState(localStorage.getItem('finnhub_api_key') || '')
   const [showApiKeyModal, setShowApiKeyModal] = useState(false)
   const [tempApiKey, setTempApiKey] = useState('')
+  const [useYahooFinance, setUseYahooFinance] = useState(true)
 
   // NASDAQ 100 stock symbols with company names
   const stockSymbols = [
@@ -22,8 +23,68 @@ function App() {
     { symbol: 'NFLX', name: 'Netflix Inc.' }
   ]
 
-  // Fetch stock data from Finnhub API (CORS-friendly)
-  const fetchStockData = async (symbol) => {
+  // Fetch stock data from Yahoo Finance API (Primary method)
+  const fetchYahooStockData = async (symbol) => {
+    try {
+      const response = await fetch(
+        `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`,
+        {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (compatible; curl)'
+          }
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error(`Yahoo Finance API failed: ${response.status}`)
+      }
+
+      const data = await response.json()
+
+      if (!data.chart || !data.chart.result || data.chart.result.length === 0) {
+        throw new Error('No chart data from Yahoo Finance')
+      }
+
+      const result = data.chart.result[0]
+      const meta = result.meta
+      const quotes = result.indicators.quote[0]
+
+      // Get current price and previous close
+      const currentPrice = meta.regularMarketPrice || quotes.close[quotes.close.length - 1]
+      const previousClose = meta.chartPreviousClose
+
+      if (!currentPrice || !previousClose) {
+        throw new Error('Invalid price data from Yahoo Finance')
+      }
+
+      // Calculate change and percentage
+      const change = currentPrice - previousClose
+      const changePercent = (change / previousClose) * 100
+
+      console.log(`${symbol} Yahoo data:`, {
+        currentPrice,
+        previousClose,
+        change: change.toFixed(2),
+        changePercent: changePercent.toFixed(2)
+      })
+
+      return {
+        symbol: symbol,
+        name: stockSymbols.find(s => s.symbol === symbol)?.name || symbol,
+        price: currentPrice,
+        change: change,
+        changePercent: changePercent,
+        previousClose: previousClose,
+        source: 'Yahoo Finance'
+      }
+    } catch (error) {
+      console.error(`Yahoo Finance error for ${symbol}:`, error)
+      return null
+    }
+  }
+
+  // Fetch stock data from Finnhub API (Fallback method)
+  const fetchFinnhubStockData = async (symbol) => {
     try {
       // Get current time and calculate date range for historical data
       const now = Math.floor(Date.now() / 1000)
@@ -100,12 +161,36 @@ function App() {
         price: currentPrice,
         change: change,
         changePercent: changePercent,
-        previousClose: previousClose
+        previousClose: previousClose,
+        source: 'Finnhub'
       }
     } catch (error) {
-      console.error(`Error fetching ${symbol}:`, error)
+      console.error(`Finnhub error for ${symbol}:`, error)
       return null
     }
+  }
+
+  // Main fetch function with fallback strategy
+  const fetchStockData = async (symbol) => {
+    // Try Yahoo Finance first (free, no API key needed)
+    if (useYahooFinance) {
+      const yahooData = await fetchYahooStockData(symbol)
+      if (yahooData) {
+        return yahooData
+      }
+      console.warn(`Yahoo Finance failed for ${symbol}, trying Finnhub...`)
+    }
+
+    // Fallback to Finnhub if Yahoo fails or if Finnhub is preferred
+    if (apiKey && apiKey !== 'demo') {
+      const finnhubData = await fetchFinnhubStockData(symbol)
+      if (finnhubData) {
+        return finnhubData
+      }
+    }
+
+    console.error(`All APIs failed for ${symbol}`)
+    return null
   }
 
   // Fetch all stock data
@@ -125,7 +210,7 @@ function App() {
       setStocks(validStocks)
       setLastUpdated(new Date())
     } catch (err) {
-      setError(apiKey === 'demo' ? 'Demo API has limited access. Please add your own API key for full data.' : 'Failed to fetch stock data. Using fallback data.')
+      setError('Failed to fetch real-time data from both Yahoo Finance and Finnhub. Using fallback data.')
       // Updated fallback data with more recent prices (as of Sep 2024)
       const fallbackStocks = [
         { symbol: 'AAPL', name: 'Apple Inc.', price: 220.85, change: 2.45, changePercent: 1.12 },
@@ -159,29 +244,29 @@ function App() {
 
   // API Key management functions
   const saveApiKey = () => {
-    if (tempApiKey.trim()) {
-      localStorage.setItem('finnhub_api_key', tempApiKey.trim())
-      setApiKey(tempApiKey.trim())
-      setShowApiKeyModal(false)
-      setTempApiKey('')
-      setError(null)
-      // Refresh data with new API key
-      fetchAllStocks()
-    }
-  }
-
-  const resetToDemo = () => {
-    localStorage.removeItem('finnhub_api_key')
-    setApiKey('demo')
+    const trimmedKey = tempApiKey.trim()
+    localStorage.setItem('finnhub_api_key', trimmedKey)
+    setApiKey(trimmedKey)
     setShowApiKeyModal(false)
     setTempApiKey('')
     setError(null)
-    // Refresh data with demo key
+    // Refresh data with new settings
+    fetchAllStocks()
+  }
+
+  const resetToYahooOnly = () => {
+    localStorage.removeItem('finnhub_api_key')
+    setApiKey('')
+    setUseYahooFinance(true)
+    setShowApiKeyModal(false)
+    setTempApiKey('')
+    setError(null)
+    // Refresh data with Yahoo Finance only
     fetchAllStocks()
   }
 
   const openApiKeyModal = () => {
-    setTempApiKey(apiKey === 'demo' ? '' : apiKey)
+    setTempApiKey(apiKey || '')
     setShowApiKeyModal(true)
   }
 
@@ -194,7 +279,7 @@ function App() {
             📈 NASDAQ 100 Stock Tracker
           </h1>
           <p className="text-blue-200 text-lg">
-            Daily closing prices and market data
+            Real-time stock prices from Yahoo Finance
           </p>
           {error && (
             <p className="text-yellow-300 text-sm mt-2 bg-yellow-900/20 rounded-lg px-4 py-2 inline-block">
@@ -234,7 +319,7 @@ function App() {
               onClick={openApiKeyModal}
               className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors flex items-center gap-2"
             >
-              🔑 API Key {apiKey === 'demo' ? '(Demo)' : '(Custom)'}
+              🔑 {apiKey ? 'Finnhub + Yahoo' : 'Yahoo Only'}
             </button>
           </div>
         </div>
@@ -270,9 +355,9 @@ function App() {
 
         {/* Footer */}
         <div className="text-center mt-12 text-blue-200">
-          <p>Powered by Finnhub API • Built with Vite + React + Tailwind CSS</p>
+          <p>Powered by Yahoo Finance API • Built with Vite + React + Tailwind CSS</p>
           <p className="text-sm mt-2">
-            Get your free API key at <a href="https://finnhub.io" target="_blank" rel="noopener noreferrer" className="text-blue-300 hover:text-blue-200 underline">finnhub.io</a>
+            Optional Finnhub backup: <a href="https://finnhub.io" target="_blank" rel="noopener noreferrer" className="text-blue-300 hover:text-blue-200 underline">finnhub.io</a>
           </p>
         </div>
 
@@ -280,26 +365,31 @@ function App() {
         {showApiKeyModal && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
             <div className="bg-gray-800 rounded-xl p-6 w-full max-w-md border border-white/20">
-              <h3 className="text-xl font-bold text-white mb-4">🔑 Finnhub API Key Settings</h3>
+              <h3 className="text-xl font-bold text-white mb-4">🔑 Data Source Settings</h3>
 
               <div className="mb-4">
+                <div className="mb-3 p-3 bg-green-900/20 rounded-lg border border-green-500/30">
+                  <p className="text-green-200 text-sm font-medium">✅ Yahoo Finance (Primary)</p>
+                  <p className="text-green-300 text-xs">Free, no API key needed, real-time data</p>
+                </div>
+
                 <label className="block text-blue-200 text-sm mb-2">
-                  API Key (leave empty for demo mode)
+                  Finnhub API Key (Optional - for enhanced reliability)
                 </label>
                 <input
                   type="text"
                   value={tempApiKey}
                   onChange={(e) => setTempApiKey(e.target.value)}
-                  placeholder="Enter your Finnhub API key..."
+                  placeholder="Enter your Finnhub API key (optional)..."
                   className="w-full px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-blue-300 focus:outline-none focus:border-blue-400"
                 />
               </div>
 
               <div className="mb-6 text-sm text-blue-200">
-                <p className="mb-2">📈 <strong>Demo mode:</strong> Very limited access (fallback data)</p>
-                <p className="mb-2">🚀 <strong>Free API key:</strong> 60 calls/minute, daily closing prices</p>
-                <p className="mb-2">💎 <strong>Premium:</strong> Higher limits + intraday data</p>
-                <p className="text-yellow-300">⚠️ NVDA prices may appear incorrect in demo mode. Use your own API key for accurate data.</p>
+                <p className="mb-2">🎯 <strong>Yahoo Finance:</strong> Primary source, free and reliable</p>
+                <p className="mb-2">🚀 <strong>+ Finnhub API:</strong> Backup when Yahoo fails (60 calls/min free)</p>
+                <p className="mb-2">💎 <strong>Premium Finnhub:</strong> Higher limits for heavy usage</p>
+                <p className="text-blue-300">💡 Yahoo Finance works great on its own. Add Finnhub for extra reliability.</p>
               </div>
 
               <div className="flex gap-3">
@@ -310,10 +400,10 @@ function App() {
                   Save
                 </button>
                 <button
-                  onClick={resetToDemo}
-                  className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg transition-colors"
+                  onClick={resetToYahooOnly}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
                 >
-                  Demo
+                  Yahoo Only
                 </button>
                 <button
                   onClick={() => setShowApiKeyModal(false)}
