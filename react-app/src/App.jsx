@@ -11,7 +11,7 @@ function App() {
   const [tempApiKey, setTempApiKey] = useState('')
   const [useYahooFinance, setUseYahooFinance] = useState(true)
 
-  // NASDAQ 100 stock symbols with company names
+  // NASDAQ 100 stocks and related ETFs
   const stockSymbols = [
     { symbol: 'AAPL', name: 'Apple Inc.' },
     { symbol: 'MSFT', name: 'Microsoft Corporation' },
@@ -20,7 +20,10 @@ function App() {
     { symbol: 'TSLA', name: 'Tesla Inc.' },
     { symbol: 'META', name: 'Meta Platforms Inc.' },
     { symbol: 'NVDA', name: 'NVIDIA Corporation' },
-    { symbol: 'NFLX', name: 'Netflix Inc.' }
+    { symbol: 'NFLX', name: 'Netflix Inc.' },
+    { symbol: 'UPRO', name: 'ProShares UltraPro S&P500' },
+    { symbol: 'TQQQ', name: 'ProShares UltraPro QQQ' },
+    { symbol: 'FTEC', name: 'Fidelity MSCI IT Sector ETF' }
   ]
 
   // Fetch stock data from Yahoo Finance API (Primary method)
@@ -220,7 +223,10 @@ function App() {
         { symbol: 'TSLA', name: 'Tesla Inc.', price: 428.75, change: 12.18, changePercent: 2.92 },
         { symbol: 'META', name: 'Meta Platforms Inc.', price: 520.45, change: -4.22, changePercent: -0.80 },
         { symbol: 'NVDA', name: 'NVIDIA Corporation', price: 890.50, change: 15.80, changePercent: 1.81 },
-        { symbol: 'NFLX', name: 'Netflix Inc.', price: 685.30, change: 8.45, changePercent: 1.25 }
+        { symbol: 'NFLX', name: 'Netflix Inc.', price: 685.30, change: 8.45, changePercent: 1.25 },
+        { symbol: 'UPRO', name: 'ProShares UltraPro S&P500', price: 65.40, change: 1.85, changePercent: 2.91 },
+        { symbol: 'TQQQ', name: 'ProShares UltraPro QQQ', price: 58.25, change: -0.95, changePercent: -1.61 },
+        { symbol: 'FTEC', name: 'Fidelity MSCI IT Sector ETF', price: 142.80, change: 0.75, changePercent: 0.53 }
       ]
       setStocks(fallbackStocks)
       setLastUpdated(new Date())
@@ -276,10 +282,10 @@ function App() {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-white mb-4">
-            📈 NASDAQ 100 Stock Tracker
+            📈 NASDAQ 100 & Tech ETF Tracker
           </h1>
           <p className="text-blue-200 text-lg">
-            Real-time stock prices from Yahoo Finance
+            Real-time stock prices and ETF data from Yahoo Finance
           </p>
           {error && (
             <p className="text-yellow-300 text-sm mt-2 bg-yellow-900/20 rounded-lg px-4 py-2 inline-block">
@@ -327,7 +333,7 @@ function App() {
         {/* Stock Grid */}
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {[...Array(8)].map((_, i) => (
+            {[...Array(11)].map((_, i) => (
               <div key={i} className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20 animate-pulse">
                 <div className="h-4 bg-white/20 rounded mb-3"></div>
                 <div className="h-6 bg-white/20 rounded mb-2"></div>
